@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Executive Report — CloudScale ML</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  </head>
+  <body class="bg-light">
+    <div class="container py-4">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h1 class="h4 fw-bold mb-1">Cloud Infrastructure &amp; Cost Optimization Report</h1>
+          <div class="text-muted small">Generated: {{ generated_at }}</div>
+        </div>
+        <div class="d-flex gap-2">
+          <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary btn-sm">Back to Dashboard</a>
+          <a href="{{ url_for('main.api_report_pdf') }}" class="btn btn-primary btn-sm">Download PDF Report</a>
+        </div>
+      </div>
+
+      <div class="card border mb-4">
+        <div class="card-body">
+          <h2 class="h6 fw-bold mb-3">Current Resources &amp; ML Prediction</h2>
+          <div class="row g-3 tabular-nums">
+            <div class="col-md-4">CPU Usage: <strong>{{ resource.cpu_usage }}%</strong></div>
+            <div class="col-md-4">RAM Usage: <strong>{{ resource.ram_usage }}%</strong></div>
+            <div class="col-md-4">Storage Usage: <strong>{{ resource.storage_usage }}%</strong></div>
+            <div class="col-md-4">Active Servers: <strong>{{ resource.server_count }}</strong></div>
+            <div class="col-md-4">Predicted CPU: <strong>{{ prediction.predicted_cpu }}%</strong></div>
+            <div class="col-md-4">Model Accuracy (R2): <strong>{{ prediction.r2_score }}</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card border mb-4">
+        <div class="card-body">
+          <h2 class="h6 fw-bold mb-3">Cost Analysis (₹10 / Server / Hour)</h2>
+          <div class="row g-3 tabular-nums">
+            <div class="col-md-4">Hourly Cost: <strong>₹{{ cost.hourly_cost }}</strong></div>
+            <div class="col-md-4">Daily Cost (Optimized): <strong>₹{{ cost.daily_cost }}</strong></div>
+            <div class="col-md-4">Monthly Projected: <strong>₹{{ cost.monthly_cost }}</strong></div>
+            <div class="col-md-4">Cost Without Optimization: <strong>₹{{ cost.cost_without_optimization }}/day</strong></div>
+            <div class="col-md-4 text-success">Daily Cost Saved: <strong>₹{{ cost.cost_saved_daily }} ({{ cost.savings_percent }}%)</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card border">
+        <div class="card-body">
+          <h2 class="h6 fw-bold mb-3">Scaling Decisions Log</h2>
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Action</th>
+                  <th>Servers</th>
+                  <th>Predicted CPU</th>
+                  <th>Decision Reason</th>
+                </tr>
+              </thead>
+              <tbody class="tabular-nums">
+                {% for row in scaling_history %}
+                <tr>
+                  <td>{{ row.timestamp }}</td>
+                  <td>{{ row.action }}</td>
+                  <td>{{ row.previous_servers }} &rarr; {{ row.new_servers }}</td>
+                  <td>{{ row.predicted_cpu }}%</td>
+                  <td>{{ row.reason }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

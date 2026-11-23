@@ -1,0 +1,6 @@
+{
+  "name": "CloudScale ML — AI Cloud Resource Monitoring & Auto-Scaling Simulator",
+  "description": "AI-powered cloud resource monitoring, Linear Regression CPU prediction, automated server scaling, cost optimization, and PDF reporting simulator.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

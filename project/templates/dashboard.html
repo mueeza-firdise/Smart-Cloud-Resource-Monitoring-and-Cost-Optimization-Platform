@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dashboard — CloudScale ML</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  </head>
+  <body class="bg-light">
+    <nav class="navbar navbar-expand-lg bg-white border-bottom sticky-top">
+      <div class="container-fluid px-4">
+        <span class="navbar-brand fw-bold text-dark">CloudScale ML</span>
+        <div class="d-flex align-items-center gap-3">
+          <a href="{{ url_for('main.report') }}" class="btn btn-outline-secondary btn-sm">View Report</a>
+          <a href="{{ url_for('main.api_report_pdf') }}" class="btn btn-primary btn-sm">Download PDF Report</a>
+          <form method="POST" action="{{ url_for('main.logout') }}" class="m-0">
+            <button type="submit" class="btn btn-light border btn-sm">Sign Out ({{ admin_user }})</button>
+          </form>
+        </div>
+      </div>
+    </nav>
+
+    <main class="container-fluid px-4 py-4">
+      <!-- Traffic Simulator Toolbar -->
+      <div class="bg-white border rounded p-3 mb-4 d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div>
+          <div class="fw-semibold">Traffic Load Simulator</div>
+          <div class="text-muted small">Trigger synthetic workload tiers to evaluate Linear Regression prediction &amp; scaling.</div>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+          <button class="btn btn-outline-success btn-sm" onclick="simulateTraffic('normal')">Generate Normal Traffic</button>
+          <button class="btn btn-outline-warning btn-sm" onclick="simulateTraffic('heavy')">Generate Heavy Traffic</button>
+          <button class="btn btn-danger btn-sm" onclick="simulateTraffic('peak')">Generate Peak Traffic</button>
+        </div>
+      </div>
+
+      <!-- 6 Metric Cards -->
+      <div class="row g-3 mb-4">
+        <div class="col-6 col-md-4 col-xl-2">
+          <div class="card border h-100">
+            <div class="card-body">
+              <div class="text-muted small">CPU Usage</div>
+              <div class="h4 fw-bold tabular-nums mt-1 mb-0" id="card-cpu">--%</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+          <div class="card border h-100">
+            <div class="card-body">
+              <div class="text-muted small">RAM Usage</div>
+              <div class="h4 fw-bold tabular-nums mt-1 mb-0" id="card-ram">--%</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+          <div class="card border h-100">
+            <div class="card-body">
+              <div class="text-muted small">Storage Usage</div>
+              <div class="h4 fw-bold tabular-nums mt-1 mb-0" id="card-storage">--%</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+          <div class="card border h-100">
+            <div class="card-body">
+              <div class="text-muted small">Active Servers</div>
+              <div class="h4 fw-bold tabular-nums mt-1 mb-0" id="card-servers">--</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+          <div class="card border h-100">
+            <div class="card-body">
+              <div class="text-muted small">Current Cost</div>
+              <div class="h4 fw-bold tabular-nums mt-1 mb-0" id="card-cost">₹--/hr</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-4 col-xl-2">
+          <div class="card border h-100">
+            <div class="card-body">
+              <div class="text-muted small">Predicted CPU</div>
+              <div class="h4 fw-bold text-primary tabular-nums mt-1 mb-0" id="card-predicted">--%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI Decision Panel & Cost Optimization -->
+      <div class="row g-3 mb-4">
+        <div class="col-lg-6">
+          <div class="card border h-100">
+            <div class="card-body">
+              <h2 class="h6 fw-bold mb-3">AI Decision &amp; Auto-Scaling Recommendations</h2>
+              <ul class="list-group list-group-flush small" id="ai-recommendations"></ul>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-6">
+          <div class="card border h-100">
+            <div class="card-body">
+              <h2 class="h6 fw-bold mb-3">Cost Optimization Summary</h2>
+              <div class="row g-2 tabular-nums small">
+                <div class="col-6">Daily Cost (Optimized): <strong id="cost-daily">₹--</strong></div>
+                <div class="col-6">Monthly Cost: <strong id="cost-monthly">₹--</strong></div>
+                <div class="col-6">Without Optimization: <strong id="cost-static">₹--</strong></div>
+                <div class="col-6 text-success">Daily Cost Saved: <strong id="cost-saved">₹--</strong></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5 Chart.js Visualizations -->
+      <div class="row g-3">
+        <div class="col-lg-6">
+          <div class="card border">
+            <div class="card-body">
+              <h3 class="h6 fw-semibold mb-3">1. CPU Trend Chart</h3>
+              <canvas id="cpuTrendChart" height="140"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-6">
+          <div class="card border">
+            <div class="card-body">
+              <h3 class="h6 fw-semibold mb-3">2. RAM Trend Chart</h3>
+              <canvas id="ramTrendChart" height="140"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-6">
+          <div class="card border">
+            <div class="card-body">
+              <h3 class="h6 fw-semibold mb-3">3. Predicted vs Actual CPU Chart</h3>
+              <canvas id="predVsActualChart" height="140"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-6">
+          <div class="card border">
+            <div class="card-body">
+              <h3 class="h6 fw-semibold mb-3">4. Server Scaling History Chart</h3>
+              <canvas id="scalingHistoryChart" height="140"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="col-12">
+          <div class="card border">
+            <div class="card-body">
+              <h3 class="h6 fw-semibold mb-3">5. Cost Savings Chart (Static Peak vs Auto-Scaled)</h3>
+              <canvas id="costSavingsChart" height="100"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <script>
+      window.INITIAL_HISTORY = {{ history | tojson }};
+    </script>
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+  </body>
+</html>

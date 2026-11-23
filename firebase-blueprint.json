@@ -1,0 +1,226 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated user profile with isolated PII.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Verified Google account email.",
+          "minLength": 3,
+          "maxLength": 254
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User display name.",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "role": {
+          "type": "string",
+          "description": "Fixed application role assigned at registration.",
+          "enum": ["operator"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of profile creation."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last profile update."
+        }
+      },
+      "required": ["uid", "email", "displayName", "role", "createdAt", "updatedAt"]
+    },
+    "ScalingPreset": {
+      "title": "ScalingPreset",
+      "description": "Saved custom CPU auto-scaling threshold preset owned by a user.",
+      "type": "object",
+      "properties": {
+        "ownerUid": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable preset name.",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "scaleDownLow": {
+          "type": "number",
+          "description": "Aggressive scale-down CPU threshold percentage (5-45)."
+        },
+        "scaleDownModerate": {
+          "type": "number",
+          "description": "Moderate scale-down CPU threshold percentage (10-65)."
+        },
+        "scaleUpHigh": {
+          "type": "number",
+          "description": "High load scale-up CPU threshold percentage (40-95)."
+        },
+        "scaleUpCritical": {
+          "type": "number",
+          "description": "Critical scale-up CPU threshold percentage (50-99)."
+        },
+        "minServers": {
+          "type": "integer",
+          "description": "Minimum active servers floor (1-15)."
+        },
+        "maxServers": {
+          "type": "integer",
+          "description": "Maximum active servers ceiling (2-50)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update."
+        }
+      },
+      "required": [
+        "ownerUid",
+        "name",
+        "scaleDownLow",
+        "scaleDownModerate",
+        "scaleUpHigh",
+        "scaleUpCritical",
+        "minServers",
+        "maxServers",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "TelemetrySnapshot": {
+      "title": "TelemetrySnapshot",
+      "description": "Saved cluster telemetry and cost optimization snapshot bookmarked by a user.",
+      "type": "object",
+      "properties": {
+        "ownerUid": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "label": {
+          "type": "string",
+          "description": "Bookmark label.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "trafficMode": {
+          "type": "string",
+          "description": "Active simulation traffic profile.",
+          "minLength": 1,
+          "maxLength": 32
+        },
+        "cpuUsage": {
+          "type": "number",
+          "description": "Measured CPU usage percentage (0-100)."
+        },
+        "ramUsage": {
+          "type": "number",
+          "description": "Measured RAM usage percentage (0-100)."
+        },
+        "storageUsage": {
+          "type": "number",
+          "description": "Measured storage usage percentage (0-100)."
+        },
+        "serverCount": {
+          "type": "integer",
+          "description": "Active server nodes at capture."
+        },
+        "predictedCpu": {
+          "type": "number",
+          "description": "Predicted next-interval CPU percentage (0-100)."
+        },
+        "dailyCost": {
+          "type": "number",
+          "description": "Optimized daily infrastructure cost in INR."
+        },
+        "costSavedDaily": {
+          "type": "number",
+          "description": "Daily savings in INR."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of capture."
+        }
+      },
+      "required": [
+        "ownerUid",
+        "label",
+        "trafficMode",
+        "cpuUsage",
+        "ramUsage",
+        "storageUsage",
+        "serverCount",
+        "predictedCpu",
+        "dailyCost",
+        "costSavedDaily",
+        "createdAt"
+      ]
+    },
+    "AdminMarker": {
+      "title": "AdminMarker",
+      "description": "Server-managed administrator role marker keyed by UID.",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Verified administrator email.",
+          "minLength": 3,
+          "maxLength": 254
+        }
+      },
+      "required": ["email"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
+      },
+      "description": "Owner-isolated user profile documents containing PII."
+    },
+    "/users/{userId}/presets/{presetId}": {
+      "schema": {
+        "$ref": "#/entities/ScalingPreset"
+      },
+      "description": "User-owned saved auto-scaling threshold presets."
+    },
+    "/users/{userId}/snapshots/{snapshotId}": {
+      "schema": {
+        "$ref": "#/entities/TelemetrySnapshot"
+      },
+      "description": "User-owned bookmarked cluster telemetry and cost snapshots."
+    },
+    "/admins/{userId}": {
+      "schema": {
+        "$ref": "#/entities/AdminMarker"
+      },
+      "description": "Read-only admin membership documents managed outside client SDKs."
+    }
+  }
+}

@@ -1,0 +1,205 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Pillar 0 / Phase 4: Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'mueezafirdose1810@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll(['uid', 'email', 'displayName', 'role', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'email', 'displayName', 'role', 'createdAt', 'updatedAt'])
+        && data.uid is string && data.uid == userId && isValidId(data.uid)
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 254
+        && data.email == request.auth.token.email
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 100
+        && data.role is string && data.role == 'operator'
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidScalingPreset(data, userId) {
+      return data.keys().hasAll([
+          'ownerUid',
+          'name',
+          'scaleDownLow',
+          'scaleDownModerate',
+          'scaleUpHigh',
+          'scaleUpCritical',
+          'minServers',
+          'maxServers',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerUid',
+          'name',
+          'scaleDownLow',
+          'scaleDownModerate',
+          'scaleUpHigh',
+          'scaleUpCritical',
+          'minServers',
+          'maxServers',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.ownerUid is string && data.ownerUid == userId && isValidId(data.ownerUid)
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 64
+        && data.scaleDownLow is number && data.scaleDownLow >= 5 && data.scaleDownLow <= 45
+        && data.scaleDownModerate is number && data.scaleDownModerate >= 10 && data.scaleDownModerate <= 65
+        && data.scaleUpHigh is number && data.scaleUpHigh >= 40 && data.scaleUpHigh <= 95
+        && data.scaleUpCritical is number && data.scaleUpCritical >= 50 && data.scaleUpCritical <= 99
+        && data.scaleDownLow < data.scaleDownModerate
+        && data.scaleDownModerate < data.scaleUpHigh
+        && data.scaleUpHigh < data.scaleUpCritical
+        && data.minServers is int && data.minServers >= 1 && data.minServers <= 15
+        && data.maxServers is int && data.maxServers >= 2 && data.maxServers <= 50
+        && data.minServers < data.maxServers
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidTelemetrySnapshot(data, userId) {
+      return data.keys().hasAll([
+          'ownerUid',
+          'label',
+          'trafficMode',
+          'cpuUsage',
+          'ramUsage',
+          'storageUsage',
+          'serverCount',
+          'predictedCpu',
+          'dailyCost',
+          'costSavedDaily',
+          'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerUid',
+          'label',
+          'trafficMode',
+          'cpuUsage',
+          'ramUsage',
+          'storageUsage',
+          'serverCount',
+          'predictedCpu',
+          'dailyCost',
+          'costSavedDaily',
+          'createdAt'
+        ])
+        && data.ownerUid is string && data.ownerUid == userId && isValidId(data.ownerUid)
+        && data.label is string && data.label.size() >= 1 && data.label.size() <= 80
+        && data.trafficMode is string && data.trafficMode.size() >= 1 && data.trafficMode.size() <= 32
+        && data.cpuUsage is number && data.cpuUsage >= 0 && data.cpuUsage <= 100
+        && data.ramUsage is number && data.ramUsage >= 0 && data.ramUsage <= 100
+        && data.storageUsage is number && data.storageUsage >= 0 && data.storageUsage <= 100
+        && data.serverCount is int && data.serverCount >= 1 && data.serverCount <= 50
+        && data.predictedCpu is number && data.predictedCpu >= 0 && data.predictedCpu <= 100
+        && data.dailyCost is number && data.dailyCost >= 0 && data.dailyCost <= 1000000
+        && data.costSavedDaily is number && data.costSavedDaily >= -1000000 && data.costSavedDaily <= 1000000
+        && data.createdAt is timestamp;
+    }
+
+    // Server-managed admin collection: clients cannot read/list other admins or write self-elevation
+    match /admins/{userId} {
+      allow get: if isValidId(userId) && isOwner(userId);
+      allow list, create, update, delete: if false;
+    }
+
+    // PII-isolated user profile documents
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if false;
+      allow create: if isValidId(userId)
+        && isOwner(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(userId)
+        && isOwner(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().email == existing().email
+        && incoming().role == existing().role
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'updatedAt']);
+      allow delete: if false;
+
+      match /presets/{presetId} {
+        allow get: if isValidId(userId) && isValidId(presetId)
+          && (isOwner(userId) || isAdmin())
+          && existing().ownerUid == userId;
+        allow list: if isOwner(userId) && existing().ownerUid == request.auth.uid;
+        allow create: if isValidId(userId) && isValidId(presetId)
+          && isOwner(userId)
+          && isValidScalingPreset(incoming(), userId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && exists(/databases/$(database)/documents/users/$(userId));
+        allow update: if isValidId(userId) && isValidId(presetId)
+          && isOwner(userId)
+          && isValidScalingPreset(incoming(), userId)
+          && incoming().ownerUid == existing().ownerUid
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'name',
+            'scaleDownLow',
+            'scaleDownModerate',
+            'scaleUpHigh',
+            'scaleUpCritical',
+            'minServers',
+            'maxServers',
+            'updatedAt'
+          ]);
+        allow delete: if isValidId(userId) && isValidId(presetId)
+          && (isOwner(userId) || isAdmin())
+          && existing().ownerUid == userId;
+      }
+
+      match /snapshots/{snapshotId} {
+        allow get: if isValidId(userId) && isValidId(snapshotId)
+          && (isOwner(userId) || isAdmin())
+          && existing().ownerUid == userId;
+        allow list: if isOwner(userId) && existing().ownerUid == request.auth.uid;
+        allow create: if isValidId(userId) && isValidId(snapshotId)
+          && isOwner(userId)
+          && isValidTelemetrySnapshot(incoming(), userId)
+          && incoming().createdAt == request.time
+          && exists(/databases/$(database)/documents/users/$(userId));
+        allow update: if false;
+        allow delete: if isValidId(userId) && isValidId(snapshotId)
+          && (isOwner(userId) || isAdmin())
+          && existing().ownerUid == userId;
+      }
+    }
+  }
+}
